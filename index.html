@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CISA Practice - Offline</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;max-width:900px;margin:20px auto;padding:10px;}
+.card{border:1px solid #ddd;padding:16px;border-radius:8px;box-shadow:rgba(0,0,0,0.05) 0 2px 6px;}
+.options button{display:block;width:100%;text-align:left;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;background:#fff;}
+.options button.correct{border-color:green;background:#eaffea;}
+.options button.wrong{border-color:red;background:#ffecec;}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="topbar">
+    <div>
+      <strong>CISA Practice</strong> — 991 questions parsed
+    </div>
+    <div>
+      <button id="nextBtn">Next ▶</button>
+    </div>
+  </div>
+  <div id="qwrap">
+    <div id="qnum"></div>
+    <h2 id="qtext"></h2>
+    <div class="options" id="options"></div>
+    <div id="explanation" style="margin-top:12px;display:none;"></div>
+  </div>
+  <div style="margin-top:12px;">
+    <label><input type="checkbox" id="shuffleQuestions" checked> Shuffle questions</label>
+    <label style="margin-left:12px"><input type="checkbox" id="shuffleOptions" checked> Shuffle options</label>
+    <button id="restartBtn">Restart</button>
+  </div>
+</div>
+
+<script>
+let questions = [];
+async function loadQuestions(){
+  const r = await fetch('questions.json');
+  questions = await r.json();
+  startQuiz();
+}
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+}
+let order = [];
+let idx = 0;
+function startQuiz(){
+  idx = 0;
+  order = Array.from(Array(questions.length).keys());
+  if(document.getElementById('shuffleQuestions').checked) shuffle(order);
+  showQuestion();
+}
+function showQuestion(){
+  if(idx >= order.length){ alert('End of quiz'); idx=0; return; }
+  const q = questions[order[idx]];
+  document.getElementById('qnum').innerText = 'Question ' + q.qnum + ' (from ' + q.source_pdf + ')';
+  document.getElementById('qtext').innerHTML = q.question;
+  const optsDiv = document.getElementById('options');
+  optsDiv.innerHTML='';
+  let opts = Object.entries(q.options || {});
+  if(document.getElementById('shuffleOptions').checked) shuffle(opts);
+  for(const [letter, text] of opts){
+    const btn = document.createElement('button');
+    btn.innerHTML = '<strong>'+letter+'.</strong> ' + text;
+    btn.onclick = ()=>{handleAnswer(btn, letter, q);};
+    optsDiv.appendChild(btn);
+  }
+  document.getElementById('explanation').style.display='none';
+  document.getElementById('explanation').innerHTML='';
+}
+function handleAnswer(btn, letter, q){
+  // Disable all buttons
+  const buttons = document.querySelectorAll('#options button');
+  buttons.forEach(b=>b.disabled=true);
+  const correct = q.correct ? q.correct.toUpperCase() : null;
+  if(correct && letter===correct){
+    btn.classList.add('correct');
+  } else { btn.classList.add('wrong'); 
+     // highlight correct
+     buttons.forEach(b=>{ if(b.innerHTML.trim().startsWith('<strong>'+correct+'.')) b.classList.add('correct'); });
+  }
+  if(q.explanation){
+    document.getElementById('explanation').style.display='block';
+    document.getElementById('explanation').innerHTML = '<strong>Explanation:</strong><br/>' + q.explanation;
+  }
+}
+document.getElementById('nextBtn').addEventListener('click', ()=>{ idx++; showQuestion(); });
+document.getElementById('restartBtn').addEventListener('click', ()=>{ startQuiz(); });
+loadQuestions();
+</script>
+</body>
+</html>
